@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>YouTube ループ練習</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      min-height: 100vh;
+      padding: 16px 16px 40px;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: #2a2a2a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 11px 12px;
+      font-size: 16px;
+      color: #fff;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="text"]:focus { border-color: #ff4444; }
+
+    .row { display: flex; gap: 10px; }
+    .row > div { flex: 1; }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn-red   { background: #e53935; color: #fff; }
+    .btn-gray  { background: #2a2a2a; color: #fff; }
+    .btn-green { background: #2e7d32; color: #fff; }
+
+    .mt8 { margin-top: 8px; }
+
+    #player-container {
+      display: none;
+      aspect-ratio: 16/9;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      background: #000;
+    }
+    #player-container iframe { width: 100%; height: 100%; }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .status { font-size: 13px; color: #888; }
+    .status.active { color: #4caf50; }
+    .counter { font-size: 22px; font-weight: 700; }
+
+    /* 保存リスト */
+    .loop-item {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .loop-item.playing { border-color: #e53935; }
+    .loop-item:active { opacity: 0.75; }
+
+    .loop-item-info { flex: 1; min-width: 0; }
+    .loop-item-name {
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .loop-item-sub {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .loop-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .icon-btn {
+      background: #2a2a2a;
+      border: none;
+      border-radius: 7px;
+      color: #fff;
+      font-size: 18px;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn:active { opacity: 0.6; }
+    .icon-btn.del { color: #e53935; }
+
+    .hint { font-size: 11px; color: #555; margin-top: 5px; }
+
+    .empty { text-align: center; color: #555; font-size: 14px; padding: 20px 0; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #222;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+
+<h1>YouTube ループ練習</h1>
+
+<!-- 入力フォーム -->
+<div class="card">
+  <label>名前（曲名・セクション名など）</label>
+  <input type="text" id="name-input" placeholder="例: Cメロ 練習">
+</div>
+
+<div class="card">
+  <label>YouTube URL</label>
+  <input type="text" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocorrect="off" autocapitalize="off">
+</div>
+
+<div class="card">
+  <div class="row">
+    <div>
+      <label>開始時間</label>
+      <input type="text" id="start-input" placeholder="1:23" inputmode="decimal">
+    </div>
+    <div>
+      <label>終了時間</label>
+      <input type="text" id="end-input" placeholder="2:45" inputmode="decimal">
+    </div>
+  </div>
+  <p class="hint">分:秒 または 秒数（例: 1:23 または 83）</p>
+</div>
+
+<button class="btn btn-red" id="load-btn">読み込んでループ開始</button>
+<button class="btn btn-green mt8" id="save-btn">このループを保存</button>
+
+<hr class="divider">
+
+<!-- プレイヤー -->
+<div id="player-container">
+  <div id="player"></div>
+</div>
+
+<!-- ループコントロール -->
+<div id="controls" style="display:none">
+  <div class="card">
+    <div class="status-bar">
+      <span class="status" id="status">待機中</span>
+      <span class="counter" id="counter">0回</span>
+    </div>
+    <button class="btn btn-red" id="loop-btn">ループ開始</button>
+    <button class="btn btn-gray mt8" id="stop-btn">停止</button>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- 保存済みリスト -->
+<h2>保存済みループ</h2>
+<div id="loop-list">
+  <p class="empty">まだ保存されていません</p>
+</div>
+
+<script>
+  let player = null;
+  let looping = false;
+  let startSec = 0;
+  let endSec = 30;
+  let loopCount = 0;
+  let checkInterval = null;
+  let currentVideoId = null;
+  let playingIndex = -1;
+
+  // ---- 時間パース ----
+  function parseTime(str) {
+    str = (str || '').trim();
+    if (!str) return null;
+    if (str.includes(':')) {
+      const [m, s] = str.split(':');
+      return parseInt(m) * 60 + parseFloat(s);
+    }
+    return parseFloat(str);
+  }
+
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  function extractVideoId(url) {
+    for (const p of [/[?&]v=([^&#]+)/, /youtu\.be\/([^?&#]+)/, /embed\/([^?&#]+)/]) {
+      const m = url.match(p);
+      if (m) return m[1];
+    }
+    return null;
+  }
+
+  // ---- LocalStorage ----
+  function loadLoops() {
+    try { return JSON.parse(localStorage.getItem('yt-loops') || '[]'); } catch { return []; }
+  }
+
+  function saveLoops(loops) {
+    localStorage.setItem('yt-loops', JSON.stringify(loops));
+  }
+
+  // ---- UI: リスト描画 ----
+  function renderList() {
+    const loops = loadLoops();
+    const el = document.getElementById('loop-list');
+    if (!loops.length) {
+      el.innerHTML = '<p class="empty">まだ保存されていません</p>';
+      return;
+    }
+    el.innerHTML = loops.map((loop, i) => `
+      <div class="loop-item ${playingIndex === i ? 'playing' : ''}" data-index="${i}">
+        <div class="loop-item-info" onclick="loadLoop(${i})">
+          <div class="loop-item-name">${escHtml(loop.name)}</div>
+          <div class="loop-item-sub">${formatTime(loop.start)} → ${formatTime(loop.end)} &nbsp;·&nbsp; ${escHtml(loop.url.slice(0, 40))}${loop.url.length > 40 ? '…' : ''}</div>
+        </div>
+        <div class="loop-item-actions">
+          <button class="icon-btn" onclick="loadLoop(${i})" title="再生">▶</button>
+          <button class="icon-btn del" onclick="deleteLoop(${i})" title="削除">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ---- ループ削除 ----
+  window.deleteLoop = function(index) {
+    if (!confirm('このループを削除しますか？')) return;
+    const loops = loadLoops();
+    loops.splice(index, 1);
+    saveLoops(loops);
+    if (playingIndex === index) playingIndex = -1;
+    renderList();
+  };
+
+  // ---- ループ読み込み（リストから） ----
+  window.loadLoop = function(index) {
+    const loops = loadLoops();
+    const loop = loops[index];
+    playingIndex = index;
+    document.getElementById('name-input').value = loop.name;
+    document.getElementById('url-input').value = loop.url;
+    document.getElementById('start-input').value = formatTime(loop.start);
+    document.getElementById('end-input').value = formatTime(loop.end);
+    renderList();
+    doLoad(loop.url, loop.start, loop.end, true);
+  };
+
+  // ---- 保存ボタン ----
+  document.getElementById('save-btn').addEventListener('click', function() {
+    const name = document.getElementById('name-input').value.trim();
+    const url  = document.getElementById('url-input').value.trim();
+    const s = parseTime(document.getElementById('start-input').value);
+    const e = parseTime(document.getElementById('end-input').value);
+
+    if (!name) { alert('名前を入力してください'); return; }
+    if (!extractVideoId(url)) { alert('正しいYouTube URLを入力してください'); return; }
+    if (s === null || e === null || s >= e) { alert('正しい開始・終了時間を入力してください'); return; }
+
+    const loops = loadLoops();
+    loops.push({ name, url, start: s, end: e });
+    saveLoops(loops);
+    renderList();
+    alert('保存しました！');
+  });
+
+  // ---- 読み込みボタン ----
+  document.getElementById('load-btn').addEventListener('click', function() {
+    const url = document.getElementById('url-input').value.trim();
+    const s = parseTime(document.getElementById('start-input').value);
+    const e = parseTime(document.getElementById('end-input').value);
+
+    if (!extractVideoId(url)) { alert('正しいYouTube URLを入力してください'); return; }
+    if (s === null || e === null || s >= e) { alert('正しい開始・終了時間を入力してください'); return; }
+
+    doLoad(url, s, e, true);
+  });
+
+  function doLoad(url, s, e, autoLoop) {
+    const videoId = extractVideoId(url);
+    if (!videoId) return;
+
+    startSec = s;
+    endSec = e;
+    loopCount = 0;
+    updateCounter();
+    stopLoop();
+
+    document.getElementById('player-container').style.display = 'block';
+    document.getElementById('controls').style.display = 'block';
+
+    if (player && currentVideoId === videoId) {
+      player.seekTo(startSec);
+      if (autoLoop) startLoop();
+    } else {
+      currentVideoId = videoId;
+      if (player) {
+        player.loadVideoById({ videoId, startSeconds: startSec });
+        if (autoLoop) {
+          player.addEventListener('onReady', function() { startLoop(); });
+        }
+      } else {
+        player = new YT.Player('player', {
+          videoId,
+          playerVars: { controls: 1, playsinline: 1, rel: 0 },
+          events: {
+            onReady: function(ev) {
+              ev.target.seekTo(startSec);
+              if (autoLoop) startLoop();
+            },
+            onStateChange: onPlayerStateChange,
+          }
+        });
+      }
+    }
+  }
+
+  function onPlayerStateChange(event) {
+    if (!looping) return;
+    if (event.data === YT.PlayerState.ENDED) {
+      loopCount++;
+      updateCounter();
+      player.seekTo(startSec);
+      player.playVideo();
+    }
+  }
+
+  function checkLoop() {
+    if (!looping || !player) return;
+    try {
+      if (player.getCurrentTime() >= endSec) {
+        loopCount++;
+        updateCounter();
+        player.seekTo(startSec);
+        player.playVideo();
+      }
+    } catch(e) {}
+  }
+
+  function updateCounter() {
+    document.getElementById('counter').textContent = loopCount + '回';
+  }
+
+  function startLoop() {
+    looping = true;
+    loopCount = 0;
+    updateCounter();
+    player.seekTo(startSec);
+    player.playVideo();
+    clearInterval(checkInterval);
+    checkInterval = setInterval(checkLoop, 300);
+    document.getElementById('status').textContent = formatTime(startSec) + ' → ' + formatTime(endSec) + ' ループ中';
+    document.getElementById('status').className = 'status active';
+  }
+
+  function stopLoop() {
+    looping = false;
+    clearInterval(checkInterval);
+    if (player) player.pauseVideo();
+    document.getElementById('status').textContent = '停止中';
+    document.getElementById('status').className = 'status';
+  }
+
+  document.getElementById('loop-btn').addEventListener('click', startLoop);
+  document.getElementById('stop-btn').addEventListener('click', stopLoop);
+
+  // YouTube API
+  window.onYouTubeIframeAPIReady = function() {};
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+
+  // 初期描画
+  renderList();
+</script>
+</body>
+</html>
