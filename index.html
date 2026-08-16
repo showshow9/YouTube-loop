@@ -446,8 +446,12 @@
   document.getElementById('loop-btn').addEventListener('click', startLoop);
   document.getElementById('stop-btn').addEventListener('click', stopLoop);
 
-  // ---- 貼り付けボタン（ホーム画面追加アプリはlong-pressペーストが不安定なため） ----
+  // ---- 貼り付けボタン ----
   document.getElementById('paste-btn').addEventListener('click', async function() {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      alert('この画面ではクリップボードAPIが使えません（非対応）。\n入力欄を直接長押しして「ペースト」を試してください。');
+      return;
+    }
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
@@ -456,7 +460,7 @@
         alert('クリップボードが空です');
       }
     } catch (e) {
-      alert('貼り付けに失敗しました。YouTubeアプリでURLをコピーしてからもう一度お試しください。');
+      alert('貼り付け失敗: ' + e.name + ' / ' + e.message);
     }
   });
 
