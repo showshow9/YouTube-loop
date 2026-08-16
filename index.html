@@ -434,6 +434,20 @@
 
   // 初期描画
   renderList();
+
+  // ---- URLパラメータから自動入力（共有シートからの起動用） ----
+  // 例: index.html?url=https://youtu.be/xxxx
+  (function() {
+    const params = new URLSearchParams(window.location.search);
+    const sharedUrl = params.get('url') || params.get('text');
+    if (sharedUrl) {
+      const found = sharedUrl.match(/https?:\/\/[^\s]+/);
+      const cleanUrl = found ? found[0] : sharedUrl;
+      if (extractVideoId(cleanUrl)) {
+        document.getElementById('url-input').value = cleanUrl;
+      }
+    }
+  })();
 </script>
 </body>
 </html>
