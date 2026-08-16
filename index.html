@@ -60,6 +60,21 @@
     .row { display: flex; gap: 10px; }
     .row > div { flex: 1; }
 
+    .input-with-btn { display: flex; gap: 8px; }
+    .input-with-btn input { flex: 1; }
+    .paste-btn {
+      flex-shrink: 0;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .paste-btn:active { opacity: 0.7; }
+
     .btn {
       width: 100%;
       padding: 14px;
@@ -170,7 +185,10 @@
 
 <div class="card">
   <label>YouTube URL</label>
-  <input type="text" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocorrect="off" autocapitalize="off">
+  <div class="input-with-btn">
+    <input type="text" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocorrect="off" autocapitalize="off">
+    <button type="button" class="paste-btn" id="paste-btn">貼り付け</button>
+  </div>
 </div>
 
 <div class="card">
@@ -427,6 +445,20 @@
 
   document.getElementById('loop-btn').addEventListener('click', startLoop);
   document.getElementById('stop-btn').addEventListener('click', stopLoop);
+
+  // ---- 貼り付けボタン（ホーム画面追加アプリはlong-pressペーストが不安定なため） ----
+  document.getElementById('paste-btn').addEventListener('click', async function() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        document.getElementById('url-input').value = text.trim();
+      } else {
+        alert('クリップボードが空です');
+      }
+    } catch (e) {
+      alert('貼り付けに失敗しました。YouTubeアプリでURLをコピーしてからもう一度お試しください。');
+    }
+  });
 
   // YouTube API
   window.onYouTubeIframeAPIReady = function() {};
